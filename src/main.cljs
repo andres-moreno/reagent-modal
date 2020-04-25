@@ -5,34 +5,22 @@
             [cljs.core.async :refer (chan put! <! go go-loop timeout)]))
 
 
-(def counter (r/atom 0))
+(def modal-display (r/atom 0))
 
 (def event-queue (chan))
 
 (go-loop [[event payload] (<! event-queue)]
   (case event
-    :inc (swap! counter #(+ % payload))
-    :dec (swap! counter #(- % payload)))
+    :inc (swap! modal-display #(+ % payload))
+    :dec (swap! modal-display #(- % payload)))
   (recur (<! event-queue)))
 
 (defn simple-component []
-  [:h1.p-2 {:class "text-3xl"} "This is a changed comment"])
-
-(defn counter-component []
-  [:h2.text-2xl.pl-2 {:on-click #(put! event-queue [:inc 2])} "counter: " @counter])
-
-(defn a-list []
-  [:ol.list-decimal.list-inside.pl-4
-   ^{:key :one} [:li  "one"]
-   ^{:key :two} [:li  "two"]
-   ^{:key :three} [:li  "three"]]  
-  )
+  [:h1.p-2 {:class "text-3xl"} "Modal Example"])
 
 (defn main-component []
   [:div 
    [simple-component]
-   [counter-component]
-   [a-list]
    [:div {:on-click #(let [mod (js/document.getElementById "myModal")]
                       (do (set! (.-style.display mod) "none")
                           (.stopPropagation %)))}
