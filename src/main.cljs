@@ -1,6 +1,7 @@
 (ns main
   (:require [reagent.core :as r]
             [reagent.dom :as rdom]
+            [goog.string :as gstring]
             [cljs.core.async :refer (chan put! <! go go-loop timeout)]))
 
 
@@ -32,7 +33,20 @@
    [simple-component]
    [counter-component]
    [a-list]
-   ])
+   [:div {:on-click #(let [mod (js/document.getElementById "myModal")]
+                      (do (set! (.-style.display mod) "none")
+                          (.stopPropagation %)))}
+    [:button#myBtn.m-2.p-2.border.border-solid.border-black.rounded-md
+     {:on-click #(let [mod (js/document.getElementById "myModal")]
+                                 (do (set! (.-style.display mod) "block")
+                                     (.stopPropagation %)))} "Open Modal"]
+    [:div#myModal {:class "modal"}
+     [:div.modal-content.flex.items-center.bg-gray-400
+      [:p {:on-click #(.stopPropagation %)} "Some Text in the Modal..."]
+      [:span.close.ml-auto
+       {:on-click #(let [mod (js/document.getElementById "myModal")]
+                     (set! (.-style.display mod) "none")) } 
+       (gstring/unescapeEntities "&times;")]]]]])
 
 (defn mount [c]
   (rdom/render [c] (.getElementById js/document "app"))
