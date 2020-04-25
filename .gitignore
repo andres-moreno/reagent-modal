@@ -1,0 +1,7 @@
+node_modules
+.shadow-cljs
+target/cljs-runtime/
+target/main.js
+target/manifest.edn
+target/css/main.css
+
