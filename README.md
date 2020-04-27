@@ -55,12 +55,10 @@ want to display it.
   (recur (<! event-queue)))
 ```
 
-Note that state is mutated only in the lines above. Regretably, a
-`stop-propagation` side-effect has to be implemented directly on the
-`:on-click` function associated with the modal content element because
-we need to stop the propagation of the `click` event right then and
-there so that users aren't able to close the modal dialog by clicking
-inside the modal dialog except for clicking on the *Close* button.
+Note that state is mutated only in the lines above. Unfortunately, we
+were not able to isolate side-effects in this section of the code: we
+need to stop the propagation of click events so that the code will
+behave as expected. More details below.
 
 ## Reagent Elements ##
 
@@ -95,7 +93,7 @@ function that launches the modal. When the user clicks on this button
 * We blur the `show-modal` button so that it is no longer focused. We
   could move this side-effect to the event dispatch handler but it
   doesn't make that much difference and we are forced to handle some
-  side-effects in the view code anyway, as discussed above.
+  side-effects in the view code anyway.
 
 ```clojure
 (defn show-modal-button []
@@ -109,10 +107,10 @@ function that launches the modal. When the user clicks on this button
 
 We implement the modal dialog through 2 components: a
 `modal-container` and a `modal-dialog`. The container is used to hold
-the modal dialog in an element that fills the entire window (absolute
-position at (0, 0), 100% width and height) with background colour that
-dims the content below (*z index* of 10) and highlights the contents
-of the `modal-dialog`:
+the modal dialog in an element that fills the *entire* window
+(absolute position at (0, 0), 100% width and height) with background
+colour that dims the content below (*z index* of 10) and highlights
+the contents of the `modal-dialog`:
 
 ```clojure
 (defn modal-container [dialog]
@@ -126,16 +124,17 @@ of the `modal-dialog`:
    [dialog]])
 ```
 
-Note the `:style` attribute: it holds a `Reagent` atom; any changes in
-the value of this atom will cause the component to re-render. Note
-also that clicking anywhere in the window *except* inside the modal
-dialog itself will result in the modal dialog being closed (we
-dispatch a `[:hide-modal]` event in the `:on-click` function of the
-modal container.
+The `:style` attribute derefences a `Reagent` atom; any changes in the
+value of this atom will cause the component to re-render. Note also
+that clicking anywhere in the window *except* inside the modal dialog
+itself will result in the modal dialog being closed (we dispatch a
+`[:hide-modal]` event in the `:on-click` function of the modal
+container.
 
-The actual content displayed is wrapped in a `div` with an `:on-click`
-event that stops the propagation of the event so that the modal cannot
-be dismissed from *inside* the modal dialog:
+The modal dialog content displayed is wrapped in a `div` with an
+`:on-click` event that stops the propagation of the event so that the
+modal cannot be dismissed from *inside* the modal dialog *except* by
+clickin the *Close* button:
 
 ```clojure
 (defn modal-dialog
