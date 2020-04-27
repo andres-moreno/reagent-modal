@@ -24,67 +24,27 @@ Differences from [W3schools][W3SchoolsModal]:
 
 # Some Comments on the Code #
 
-As mentioned above, we use a `Reagent` atom to hold the value of the
-CSS `display` attribute: the modal is hidden when this value is
-`"none"` and revealed when we change the value to `"block"`. 
+This is a minimal example that serves as amodel for login or more
+complex forms. Though I hate modal dialogs from a user perspective, we
+need to have a way to implement them.
+
+## Architecture ##
+
+We implement a very simple variant of Facebook's *Flux
+Architecture*. We hold state in a `Reagent` atom and we use
+`core.async` to implement an `event-queue`. Events are placed in the
+queue as a result of the actions of the user. Events are just data--a
+vector with a keyword: `[:show-modal]` or `[:hide-modal]`.
+
+Event dispatch takes place by having code listening for events on the
+`event-queue`: we change the value of the CSS `display` property to
+`none` if we want to hide the modal or `block` if we want to display
+it directly as a result of an event being dispatched:
 
 ```clojure
-(def modal-display (r/atom {:background-color "rgba(0,0,0,0.4"
+(def modal-display (r/atom {:background-color "rgba(0,0,0,0.4)"
                             :display "none"}))
-```
 
-I haven't been able to work out how to implement the same opacity
-effect in `tailwindcss` with a utility class, so we can use the CSS
-attribute to set the backgroun color and keep it in the same atom. One
-could also add the color to the `tailwindcss` palette (see the
-documentation for `tailwindcss`) or create a custom class for the
-modal background an set the `background-color` there, in which case we
-could also use it toset all the other CSS properties.
-
-Implementing the modal dialog: the main idea is to have a background
-`div` spanning the entire window (position fixed, anchored at 0,0,
-width and height at 100%) that we can use to darken all the elements
-behind the modal dialog.
-
-The modal dialog itself in this example is a `div` holding a `p` and a
-`button`:
-
-```clojure
-    ;; modal background container
-    [:div
-     {:class "fixed z-10 top-0 left-0 w-full h-full overflow-auto" 
-      :style @modal-display}
-     ;; modal content container
-     [:div
-      {:class "mx-auto p-4 modal-content flex items-center w-5/6 mt-32
-               bg-gray-500 border border-solid border-black"
-       :on-click #(.stopPropagation %)} ; disable closing inside modal
-      [:p
-       {:class "w-11/12"} "Some Text in the Modal..."]
-      ;; button to close modal
-      [:button
-       {:class "px-3 py-2 ml-auto border border-solid border-black
-                rounded-md bg-gray-400 hover:bg-gray-300 focus:bg-gray-300"
-        :on-click #(put! event-queue [:hide-modal])} 
-       "Close"]]]]])
-```
-
-The modal background container is displayed whenever the
-`modal-display` atom changes to `block`. This is done by clicking on
-the `open modal` button:
-
-```clojure
-[:button.m-2.p-2.border.border-solid.border-black.rounded-md.bg-gray-200
-     {:on-click #(do (put! event-queue [:show-modal])
-                     (.activeElement.blur js/document)
-                     (.stopPropagation %))} "Open Modal"]
-```
-
-We change the value of the atom by putting a `:show-modal` event on
-the event queue (a simple-minded `core.async` implementation of the Flux
-Architecture). Events are dispatched thusly:
-
-```clojure
 (def event-queue (chan))
 
 (go-loop [[event payload] (<! event-queue)]
@@ -92,6 +52,105 @@ Architecture). Events are dispatched thusly:
     :show-modal (swap! modal-display #(assoc % :display "block"))
     :hide-modal (swap! modal-display #(assoc % :display "none")))
   (recur (<! event-queue)))
+```
+
+Note that state is mutated only in the lines above. Regretably, a
+`stop-propagation` side-effect has to be implemented directly on the
+`:on-click` function associated with the modal content element because
+we need to stop the propagation of the `click` event right then and
+there (it doesn't work to do so asynchronously).
+
+## Reagent Elements ##
+
+The intention is to keep the code for the main component as clear and
+simple as possible:
+
+```clojure
+(defn main-component []
+  [:div 
+   [title-component]
+   [show-modal-button]
+   [modal-container modal-dialog]
+])
+```
+
+The `title-component` is a simple heading:
+
+```clojure
+(defn title-component []
+  [:h1.p-2.text-3xl "Modal Example"])
+```
+
+Here `p-2` and `text-3xl` are `tailwindcss` utility classes. I find it
+useful to include CSS at a higher level in the component
+themselves. Time will tell if this is a good idea.
+
+The `show-modal-button` is also simple--a button with an `:on-click`
+function that launches the modal. When the user clicks on this button
+
+* We put a `[:show-modal]` event on the event queue which will result
+  in the modal dialog being shown to the user
+* We blur the button so that it is no longer focused. We could move
+  this side-effect to the event dispatch handler but it doesn't make
+  that much difference and we are forced to handle some side-effects
+  in the view code anyway, as discussed above.
+
+```clojure
+(defn show-modal-button []
+  [:button.m-2.p-2.border.border-solid.border-black.rounded-md.bg-gray-200
+   {:on-click #(do (put! event-queue [:show-modal])
+                   (.activeElement.blur js/document))}
+   "Open Modal"])
+```
+
+## The Modal ##
+
+We implement the modal dialog through 2 components: a
+`modal-container` and a `modal-dialog`. The container is used to hold
+the modal dialog in an element that fills the entire window (absolute
+position at (0, 0), 100% width and height) with background colour that
+dims the content below (*z index* of 10) and highlights the contents
+of the `modal-dialog`:
+
+```clojure
+(defn modal-container [dialog]
+  ;; modal background container
+  [:div
+   {:class "fixed z-10 top-0 left-0 w-full h-full overflow-auto" 
+    :style @modal-display
+    ;; clicking outside of modal closes the modal
+    :on-click #(do (put! event-queue [:hide-modal])
+                   (.stopPropagation %))}
+   [dialog]])
+```
+
+Note the `:style` attribute: it holds a `Reagent` atom; any changes in
+the value of this atom will cause the component to re-render. Note
+also that clicking anywhere in the window *except* inside the modal
+dialog itself will result in the modal dialog being closed (we
+dispatch a `[:hide-modal]` event in the `:on-click` function of the
+modal container.
+
+The actual content displayed is wrapped in a `div` with an `:on-click`
+event that stops the propagation of the event so that the modal cannot
+be dismissed from *inside* the modal dialog:
+
+```clojure
+(defn modal-dialog
+  "A modal dialog with text and a button to close it"
+  []
+  [:div ;; container to hold contents
+   {:class "mx-auto p-4 modal-content flex items-center w-5/6 mt-32
+            bg-gray-500 border border-solid border-black"
+    :on-click #(.stopPropagation %)} ; disable closing *inside* modal
+   [:p
+    {:class "w-11/12"} "Some Text in the Modal..."]
+   ;; button to close modal
+   [:button
+    {:class "px-3 py-2 ml-auto border border-solid border-black
+             rounded-md bg-gray-400 hover:bg-gray-300 focus:bg-gray-300"
+     :on-click #(put! event-queue [:hide-modal])} 
+    "Close"]])
 ```
 
 Note: you don't have to implement a queue to change the value of
