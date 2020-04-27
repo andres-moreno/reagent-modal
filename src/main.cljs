@@ -20,8 +20,8 @@
 (defn show-modal-button []
   [:button.m-2.p-2.border.border-solid.border-black.rounded-md.bg-gray-200
    {:on-click #(do (put! event-queue [:show-modal])
-                   (.activeElement.blur js/document)
-                   (.stopPropagation %))} "Open Modal"])
+                   (.activeElement.blur js/document))}
+   "Open Modal"])
 
 (defn modal-dialog
   "A modal dialog with text and a button to close it"
