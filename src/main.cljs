@@ -1,44 +1,58 @@
 (ns main
   (:require [reagent.core :as r]
             [reagent.dom :as rdom]
-            [goog.string :as gstring]
             [cljs.core.async :refer (chan put! <! go go-loop timeout)]))
 
-
-(def modal-display (r/atom 0))
+(def modal-display (r/atom {:background-color "rgba(0,0,0,0.4)"
+                            :display "none"}))
 
 (def event-queue (chan))
 
 (go-loop [[event payload] (<! event-queue)]
   (case event
-    :inc (swap! modal-display #(+ % payload))
-    :dec (swap! modal-display #(- % payload)))
+    :show-modal (swap! modal-display #(assoc % :display "block"))
+    :hide-modal (swap! modal-display #(assoc % :display "none")))
   (recur (<! event-queue)))
 
 (defn simple-component []
-  [:h1.p-2 {:class "text-3xl"} "Modal Example"])
+  [:h1.p-2.text-3xl "Modal Example"])
+
+(defn show-modal-button []
+  [:button.m-2.p-2.border.border-solid.border-black.rounded-md.bg-gray-200
+   {:on-click #(do (put! event-queue [:show-modal])
+                   (.activeElement.blur js/document)
+                   (.stopPropagation %))} "Open Modal"])
+
+(defn modal-component []
+  ;; modal background container
+  [:div
+   {:class "fixed z-10 top-0 left-0 w-full h-full overflow-auto" 
+    :style @modal-display
+    ;; click outside of modal closes the modal
+    :on-click #(do (put! event-queue [:hide-modal])
+                   (.stopPropagation %))}
+   ;; modal content container
+   [:div
+    {:class "mx-auto p-4 modal-content flex items-center w-5/6 mt-32
+             bg-gray-500 border border-solid border-black"
+     :on-click #(.stopPropagation %)} ; disable closing *inside* modal
+    [:p
+     {:class "w-11/12"} "Some Text in the Modal..."]
+    ;; button to close modal
+    [:button
+     {:class "px-3 py-2 ml-auto border border-solid border-black
+              rounded-md bg-gray-400 hover:bg-gray-300 focus:bg-gray-300"
+      :on-click #(put! event-queue [:hide-modal])} 
+     "Close"]]])
 
 (defn main-component []
   [:div 
    [simple-component]
-   [:div {:on-click #(let [mod (js/document.getElementById "myModal")]
-                      (do (set! (.-style.display mod) "none")
-                          (.stopPropagation %)))}
-    [:button#myBtn.m-2.p-2.border.border-solid.border-black.rounded-md
-     {:on-click #(let [mod (js/document.getElementById "myModal")]
-                                 (do (set! (.-style.display mod) "block")
-                                     (.stopPropagation %)))} "Open Modal"]
-    [:div#myModal {:class "modal"}
-     [:div.modal-content.flex.items-center.bg-gray-400
-      [:p {:on-click #(.stopPropagation %)} "Some Text in the Modal..."]
-      [:span.close.ml-auto
-       {:on-click #(let [mod (js/document.getElementById "myModal")]
-                     (set! (.-style.display mod) "none")) } 
-       (gstring/unescapeEntities "&times;")]]]]])
+   [show-modal-button]
+   [modal-component]])
 
 (defn mount [c]
-  (rdom/render [c] (.getElementById js/document "app"))
-  )
+  (rdom/render [c] (.getElementById js/document "app")))
 
 (defn reload! []
   (mount main-component)
