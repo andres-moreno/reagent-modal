@@ -24,9 +24,9 @@ Differences from [W3schools][W3SchoolsModal]:
 
 # Some Comments on the Code #
 
-This is a minimal example that serves as amodel for login or more
-complex forms. Though I hate modal dialogs from a user perspective, we
-need to have a way to implement them.
+This is a minimal example that serves as amodel for a login form or
+more complex ones. Though I hate modal dialogs from a user
+perspective, we need to have a way to implement them.
 
 ## Architecture ##
 
@@ -34,12 +34,13 @@ We implement a very simple variant of Facebook's *Flux
 Architecture*. We hold state in a `Reagent` atom and we use
 `core.async` to implement an `event-queue`. Events are placed in the
 queue as a result of the actions of the user. Events are just data--a
-vector with a keyword: `[:show-modal]` or `[:hide-modal]`.
+vector with a keyword and there are just two of them: `[:show-modal]`
+or `[:hide-modal]`.
 
 Event dispatch takes place by having code listening for events on the
 `event-queue`: we change the value of the CSS `display` property to
-`none` if we want to hide the modal or `block` if we want to display
-it directly as a result of an event being dispatched:
+`none` if we want to hide the modal and change it to `block` if we
+want to display it.
 
 ```clojure
 (def modal-display (r/atom {:background-color "rgba(0,0,0,0.4)"
@@ -58,7 +59,8 @@ Note that state is mutated only in the lines above. Regretably, a
 `stop-propagation` side-effect has to be implemented directly on the
 `:on-click` function associated with the modal content element because
 we need to stop the propagation of the `click` event right then and
-there (it doesn't work to do so asynchronously).
+there so that users aren't able to close the modal dialog by clicking
+inside the modal dialog except for clicking on the *Close* button.
 
 ## Reagent Elements ##
 
@@ -82,18 +84,18 @@ The `title-component` is a simple heading:
 ```
 
 Here `p-2` and `text-3xl` are `tailwindcss` utility classes. I find it
-useful to include CSS at a higher level in the component
-themselves. Time will tell if this is a good idea.
+useful to include higher level CSS in the elements themselves. Time
+will tell if this is a good idea.
 
 The `show-modal-button` is also simple--a button with an `:on-click`
 function that launches the modal. When the user clicks on this button
 
 * We put a `[:show-modal]` event on the event queue which will result
   in the modal dialog being shown to the user
-* We blur the button so that it is no longer focused. We could move
-  this side-effect to the event dispatch handler but it doesn't make
-  that much difference and we are forced to handle some side-effects
-  in the view code anyway, as discussed above.
+* We blur the `show-modal` button so that it is no longer focused. We
+  could move this side-effect to the event dispatch handler but it
+  doesn't make that much difference and we are forced to handle some
+  side-effects in the view code anyway, as discussed above.
 
 ```clojure
 (defn show-modal-button []
