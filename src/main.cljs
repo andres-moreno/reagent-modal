@@ -14,7 +14,7 @@
     :hide-modal (swap! modal-display #(assoc % :display "none")))
   (recur (<! event-queue)))
 
-(defn simple-component []
+(defn title-component []
   [:h1.p-2.text-3xl "Modal Example"])
 
 (defn show-modal-button []
@@ -23,33 +23,38 @@
                    (.activeElement.blur js/document)
                    (.stopPropagation %))} "Open Modal"])
 
-(defn modal-component []
+(defn modal-dialog
+  "A modal dialog with text and a button to close it"
+  []
+  [:div ;; container to hold contents
+   {:class "mx-auto p-4 modal-content flex items-center w-5/6 mt-32
+            bg-gray-500 border border-solid border-black"
+    :on-click #(.stopPropagation %)} ; disable closing *inside* modal
+   [:p
+    {:class "w-11/12"} "Some Text in the Modal..."]
+   ;; button to close modal
+   [:button
+    {:class "px-3 py-2 ml-auto border border-solid border-black
+             rounded-md bg-gray-400 hover:bg-gray-300 focus:bg-gray-300"
+     :on-click #(put! event-queue [:hide-modal])} 
+    "Close"]])
+
+(defn modal-container [dialog]
   ;; modal background container
   [:div
    {:class "fixed z-10 top-0 left-0 w-full h-full overflow-auto" 
     :style @modal-display
-    ;; click outside of modal closes the modal
+    ;; clicking outside of modal closes the modal
     :on-click #(do (put! event-queue [:hide-modal])
                    (.stopPropagation %))}
-   ;; modal content container
-   [:div
-    {:class "mx-auto p-4 modal-content flex items-center w-5/6 mt-32
-             bg-gray-500 border border-solid border-black"
-     :on-click #(.stopPropagation %)} ; disable closing *inside* modal
-    [:p
-     {:class "w-11/12"} "Some Text in the Modal..."]
-    ;; button to close modal
-    [:button
-     {:class "px-3 py-2 ml-auto border border-solid border-black
-              rounded-md bg-gray-400 hover:bg-gray-300 focus:bg-gray-300"
-      :on-click #(put! event-queue [:hide-modal])} 
-     "Close"]]])
+   [dialog]])
 
 (defn main-component []
   [:div 
-   [simple-component]
+   [title-component]
    [show-modal-button]
-   [modal-component]])
+   [modal-container modal-dialog]
+])
 
 (defn mount [c]
   (rdom/render [c] (.getElementById js/document "app")))
