@@ -9,7 +9,8 @@ There is already a [recipe][Reagent-Bootstrap-Modal] for `Reagent`
 modal windows using `Bootstrap`.
 
 Below is an alternative that follows the approach posted by the
-[W3schools][W3SchoolsModal].
+[W3schools][W3SchoolsModal] using only Javascript (no Boostrap, no
+JQuery). We follow this approach with suitable changes where needed.
 
 Differences from [W3schools][W3SchoolsModal]:
 
@@ -24,7 +25,7 @@ Differences from [W3schools][W3SchoolsModal]:
 
 # Some Comments on the Code #
 
-This is a minimal example that serves as amodel for a login form or
+This is a minimal example that serves as a model for a login form or
 more complex ones. Though I hate modal dialogs from a user
 perspective, we need to have a way to implement them.
 
@@ -34,12 +35,12 @@ We implement a very simple variant of Facebook's *Flux
 Architecture*. We hold state in a `Reagent` atom and we use
 `core.async` to implement an `event-queue`. Events are placed in the
 queue as a result of the actions of the user. Events are just data--a
-vector with a keyword and there are just two of them: `[:show-modal]`
+vector with a keyword; there are just two of them: `[:show-modal]`
 or `[:hide-modal]`.
 
 Event dispatch takes place by having code listening for events on the
 `event-queue`: we change the value of the CSS `display` property to
-`none` if we want to hide the modal and change it to `block` if we
+`none` if we want to hide the modal, and change it to `block` if we
 want to display it.
 
 ```clojure
@@ -59,6 +60,16 @@ Note that state is mutated only in the lines above. Unfortunately, we
 were not able to isolate side-effects in this section of the code: we
 need to stop the propagation of click events so that the code will
 behave as expected. More details below.
+
+The sharp-eyed reader will have noticed that the atom also holds the
+background color for the modal--black with some opacity. I haven't
+figured out how to get the same effect using `tailwindcss` utility
+classes. We could have implemented a custom CSS class and included the
+background color and other styling elments for the modal
+there. Alternatively, one can extend the theme as suggested in this
+[feature request][TailwindCSS-feat-req]
+
+[TailwindCSS-feat-req]: https://github.com/tailwindcss/tailwindcss/issues/1258 "Opacity feature request"
 
 ## Reagent Elements ##
 
