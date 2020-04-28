@@ -10,7 +10,7 @@ modal windows using `Bootstrap`.
 
 Below is an alternative that follows the approach posted by the
 [W3schools][W3SchoolsModal] using only Javascript (no Boostrap, no
-JQuery). We follow this approach with suitable changes where needed.
+JQuery) with suitable changes where needed.
 
 Differences from [W3schools][W3SchoolsModal]:
 
@@ -123,12 +123,12 @@ function that launches the modal. When the user clicks on this button
 
 ## The Modal ##
 
-We implement the modal dialog through 2 components: a
-`modal-container` and a `modal-dialog`. The container is used to hold
-the modal dialog in an element that fills the *entire* window
-(absolute position at (0, 0), 100% width and height) with background
-colour that dims the content below (*z index* of 10) and highlights
-the contents of the `modal-dialog`:
+We implement the modal dialog with two components: a `modal-container`
+and a `modal-dialog`. The container is used to hold the modal dialog
+in an element that fills the *entire* window (absolute position at (0,
+0), 100% width and height) with background colour that dims the
+content below (*z index* of 10) and highlights the contents of the
+`modal-dialog`:
 
 ```clojure
 (defn modal-container [dialog]
@@ -141,9 +141,9 @@ the contents of the `modal-dialog`:
    [dialog]])
 ```
 
-The `:style` attribute derefences a `Reagent` atom; any changes in the
-value of this atom will cause the component to re-render. We also put
-a `[:hide-modal]` event in the queue if the user clicks on the
+The `:style` attribute derefences a `Reagent` atom; any changes to
+this atom will cause the component to re-render. We also put a
+`[:hide-modal]` event in the queue if the user clicks on the
 `modal-container`, so the modal will be close whenever the user clicks
 anywhere in the screen *except* for the modal dialog itself, where we
 intercept the `:on-click` event and stop its propagation:
