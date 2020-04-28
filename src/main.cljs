@@ -45,8 +45,7 @@
    {:class "fixed z-10 top-0 left-0 w-full h-full overflow-auto" 
     :style @modal-display
     ;; clicking outside of modal closes the modal
-    :on-click #(do (put! event-queue [:hide-modal])
-                   (.stopPropagation %))}
+    :on-click #(do (put! event-queue [:hide-modal]))}
    [dialog]])
 
 (defn main-component []
