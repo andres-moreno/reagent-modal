@@ -45,15 +45,14 @@
    {:class "fixed z-10 top-0 left-0 w-full h-full overflow-auto" 
     :style @modal-display
     ;; clicking outside of modal closes the modal
-    :on-click #(do (put! event-queue [:hide-modal]))}
+    :on-click #(put! event-queue [:hide-modal])}
    [dialog]])
 
 (defn main-component []
   [:div 
    [title-component]
    [show-modal-button]
-   [modal-container modal-dialog]
-])
+   [modal-container modal-dialog]])
 
 (defn mount [c]
   (rdom/render [c] (.getElementById js/document "app")))
