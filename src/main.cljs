@@ -3,15 +3,14 @@
             [reagent.dom :as rdom]
             [cljs.core.async :refer (chan put! <! go go-loop timeout)]))
 
-(def modal-display (r/atom {:background-color "rgba(0,0,0,0.4)"
-                            :display "none"}))
+(def modal-display (r/atom false))
 
 (def event-queue (chan))
 
 (go-loop [[event payload] (<! event-queue)]
   (case event
-    :show-modal (swap! modal-display #(assoc % :display "block"))
-    :hide-modal (swap! modal-display #(assoc % :display "none")))
+    :show-modal (reset! modal-display true)
+    :hide-modal (reset! modal-display false))
   (recur (<! event-queue)))
 
 (defn title-component []
@@ -19,8 +18,8 @@
 
 (defn show-modal-button []
   [:button.m-2.p-2.border.border-solid.border-black.rounded-md.bg-gray-200
-   {:on-click #(do (put! event-queue [:show-modal])
-                   (.activeElement.blur js/document))}
+   {:on-click #(do (.activeElement.blur js/document)
+                   (put! event-queue [:show-modal]))}
    "Open Modal"])
 
 (defn modal-dialog
@@ -39,20 +38,21 @@
      :on-click #(put! event-queue [:hide-modal])} 
     "Close"]])
 
-(defn modal-container [dialog]
+(defn modal-container [dialog display-flag]
   ;; modal background container
-  [:div
-   {:class "fixed z-10 top-0 left-0 w-full h-full overflow-auto" 
-    :style @modal-display
-    ;; clicking outside of modal closes the modal
-    :on-click #(put! event-queue [:hide-modal])}
-   [dialog]])
+  (when @display-flag
+    [:div
+     {:class "fixed z-10 top-0 left-0 w-full h-full overflow-auto" 
+      :style {:background-color "rgba(0,0,0,0.4)"}
+      ;; clicking outside of modal closes the modal
+      :on-click #(put! event-queue [:hide-modal])}
+     [dialog]]))
 
 (defn main-component []
   [:div 
    [title-component]
    [show-modal-button]
-   [modal-container modal-dialog]])
+   [modal-container modal-dialog modal-display]])
 
 (defn mount [c]
   (rdom/render [c] (.getElementById js/document "app")))
