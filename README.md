@@ -44,39 +44,20 @@ the modal element to `none` if we want to hide the modal, and change
 it to `block` if we want to display it.
 
 ```clojure
-(def modal-display (r/atom {:background-color "rgba(0,0,0,0.4)"
-                            :display "none"}))
+(def modal-display (r/atom false))
 
 (def event-queue (chan))
 
 (go-loop [[event payload] (<! event-queue)]
   (case event
-    :show-modal (swap! modal-display #(assoc % :display "block"))
-    :hide-modal (swap! modal-display #(assoc % :display "none")))
+    :show-modal (reset! modal-display true)
+    :hide-modal (reset! modal-display false))
   (recur (<! event-queue)))
 ```
-
-Note that state is mutated only in the lines above. Unfortunately, we
-were not able to isolate side-effects in this section of the code: we
-need to stop the propagation of click events *in situ* so that the
-code will behave as expected. More details below.
-
-The sharp-eyed reader will have noticed that the atom also holds the
-background color for the modal--black with some opacity. I haven't
-figured out how to get the same effect using `tailwindcss` utility
-classes. We could have implemented a custom CSS class and included the
-background color and other styling elments for the modal
-there. Alternatively, one can extend the theme as suggested in this
-[feature request][TailwindCSS-feat-req]. This is an artifact of using
-`tailwindcss` and not being sure on what's the best way to
-implement. Besides, it shows that we can hold other properties in the
-atom as well as use CSS classes at the same time.
 
 NOTE: this event-based architecture is not needed. One could just as
 well modify the value of the `modal-display` atom in the `:on-click`
 handlers themselves.
-
-[TailwindCSS-feat-req]: https://github.com/tailwindcss/tailwindcss/issues/1258 "Opacity feature request"
 
 ## Reagent Elements ##
 
@@ -88,7 +69,7 @@ possible:
   [:div 
    [title-component]
    [show-modal-button]
-   [modal-container modal-dialog]
+   [modal-container modal-dialog modal-display]
 ])
 ```
 
@@ -99,9 +80,9 @@ The `title-component` is a simple heading:
   [:h1.p-2.text-3xl "Modal Example"])
 ```
 
-Here `p-2` and `text-3xl` are `tailwindcss` utility classes. I find it
+Here `p-2` and `text-3xl` are [`tailwindcss`] utility classes. I find it
 useful to include higher level CSS in the elements themselves which is
-the pitch `tailwindcss` makes. Time will tell if this is a good idea.
+the pitch [`tailwindcss`] makes. Time will tell if this is a good idea.
 
 The `show-modal-button` is also simple: a button with an `:on-click`
 function that launches the modal. When the user clicks on this button
@@ -131,22 +112,36 @@ content below (*z index* of 10) and highlights the contents of the
 `modal-dialog`:
 
 ```clojure
-(defn modal-container [dialog]
+(defn modal-container [dialog display-flag]
   ;; modal background container
-  [:div
-   {:class "fixed z-10 top-0 left-0 w-full h-full overflow-auto" 
-    :style @modal-display
-    ;; clicking outside of modal closes the modal
-    :on-click #(do (put! event-queue [:hide-modal]))}
-   [dialog]])
+  (when @display-flag
+    [:div
+     {:class "fixed z-10 top-0 left-0 w-full h-full overflow-auto" 
+      :style {:background-color "rgba(0,0,0,0.4)"}
+      ;; clicking outside of modal closes the modal
+      :on-click #(put! event-queue [:hide-modal])}
+     [dialog]]))
 ```
 
-The `:style` attribute derefences a `Reagent` atom; any changes to
-this atom will cause the component to re-render. We also put a
-`[:hide-modal]` event in the queue if the user clicks on the
-`modal-container`, so the modal will be close whenever the user clicks
-anywhere in the screen *except* for the modal dialog itself, where we
-intercept the `:on-click` event and stop its propagation:
+The `:style` attribute sets the `background-color` for the modal
+container. We could have added the colour to the theme of
+[`tailwindcss`] to avoid the string `"rgba(0,0,0,0.4)"` or created a
+custom class and applied it in the line above `:class`: I am not sure
+what approach is best.
+
+Note the apperance of a display-flag variable: any changes to this
+Reagent atom will cause the component to re-render. In particular, if
+the user clicks on the the modal container (which is the background to
+the modal dialog), an event will be dispatched that will cause
+`display-flag` to change to `false`, which in turn will result in the
+modal container and dialog closing. I think it is a UI anti-pattern to
+force users to click on modal dialogs, so we provide this escape
+hatch. YMMV.
+
+When the user is inside the modal dialog, we don't want to close it
+unless the user clicks on the button. Thus, we intercept the
+`:on-click` event and stop its propagation if the user clicks on the
+modal dialog anywhere except for the `Close` button:
 
 ```clojure
 (defn modal-dialog
@@ -166,9 +161,8 @@ intercept the `:on-click` event and stop its propagation:
     "Close"]])
 ```
 
-This `Reagent` component has two HTML elements: a `<p>` with some
-text, and a `<button>` to close the modal--these elements can be
-substituted for any other code as can any of the styling.
+These Reagent elements can be substituted for any other code as can
+any of the styling--we are just providing a pattern.
 
 # How to Run the Code #
 
